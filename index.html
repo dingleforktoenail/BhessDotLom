@@ -385,7 +385,7 @@
     let selectedSquare = null;
     let validMoves = [];
     let isGameActive = false;
-    let currentAuthMode = 'register'; // Default to Create Account first
+    let currentAuthMode = 'register';
 
     // Timers
     let initialTime = 300;
@@ -452,7 +452,7 @@
     }
 
     /* ==========================================================================
-       3. USER ACCOUNTS & GMAIL / CREATION SYSTEM
+       3. USER ACCOUNTS & GMAIL / CREATION SYSTEM (STRICT GMAIL UNIQUENESS)
        ========================================================================== */
     function getStoredAccounts() {
       const accs = localStorage.getItem('bhess_accounts');
@@ -461,6 +461,13 @@
 
     function saveAccounts(accs) {
       localStorage.setItem('bhess_accounts', JSON.stringify(accs));
+    }
+
+    function findAccountByEmail(email) {
+      if (!email) return null;
+      const accounts = getStoredAccounts();
+      const normalized = email.trim().toLowerCase();
+      return Object.values(accounts).find(acc => acc.email && acc.email.toLowerCase() === normalized);
     }
 
     function loadUserAccount() {
@@ -502,7 +509,7 @@
     function openAuthModal() {
       document.getElementById('modal-auth').classList.remove('hidden');
       document.getElementById('auth-error').classList.add('hidden');
-      setAuthMode('register'); // Always default to Create Account when opening modal
+      setAuthMode('register');
     }
 
     function closeAuthModal() {
@@ -540,32 +547,45 @@
         return;
       }
 
-      const defaultUsername = email.split('@')[0];
-      const accounts = getStoredAccounts();
-      const existingKey = Object.keys(accounts).find(k => accounts[k].email === email || k === defaultUsername.toLowerCase());
+      const normalizedEmail = email.trim().toLowerCase();
+      const existingAccount = findAccountByEmail(normalizedEmail);
 
-      if (existingKey) {
-        currentUser = accounts[existingKey];
-        alert(`Account found! Signed in as ${currentUser.username} (${email})`);
-      } else {
-        currentUser = {
-          username: defaultUsername,
-          email: email,
-          password: 'google_oauth_auth',
-          elo: 1200,
-          wins: 0,
-          losses: 0,
-          draws: 0,
-          history: []
-        };
-        accounts[defaultUsername.toLowerCase()] = currentUser;
-        saveAccounts(accounts);
-        alert(`Account successfully created for ${currentUser.username} (${email})! You are now logged in.`);
+      // Check if account already exists with this Gmail
+      if (existingAccount) {
+        alert(`An account already exists on that Gmail address (${normalizedEmail}) under username: "${existingAccount.username}".\n\nPlease switch to 'Sign In' instead.`);
+        setAuthMode('signin');
+        document.getElementById('auth-username').value = existingAccount.username;
+        return;
       }
 
+      let username = email.split('@')[0];
+      const accounts = getStoredAccounts();
+      let baseUsername = username;
+      let counter = 1;
+
+      // Handle username duplication if username is taken
+      while (accounts[username.toLowerCase()]) {
+        username = `${baseUsername}${counter}`;
+        counter++;
+      }
+
+      currentUser = {
+        username: username,
+        email: normalizedEmail,
+        password: 'google_oauth_auth',
+        elo: 1200,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        history: []
+      };
+
+      accounts[username.toLowerCase()] = currentUser;
+      saveAccounts(accounts);
       saveUserAccount();
       updateUserUI();
       closeAuthModal();
+      alert(`Account created successfully for ${currentUser.username} (${normalizedEmail})! You are now logged in.`);
     }
 
     function handleAuthSubmit(e) {
@@ -585,6 +605,15 @@
           errorEl.classList.remove('hidden');
           return;
         }
+
+        // Check if an account already exists on that Gmail
+        const existingEmailAccount = findAccountByEmail(email);
+        if (existingEmailAccount) {
+          errorEl.innerText = `An account already exists on that Gmail address (${email.toLowerCase()}). Please sign in instead!`;
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
         if (accounts[key]) {
           errorEl.innerText = "Username already exists. Switch to 'Sign In' or choose a new username.";
           errorEl.classList.remove('hidden');
@@ -594,7 +623,7 @@
         // Create Account & Auto Log In
         currentUser = {
           username: username,
-          email: email,
+          email: email.toLowerCase(),
           password: password,
           elo: 1200,
           wins: 0,
