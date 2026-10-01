@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Grandmaster Chess Arena</title>
+  <title>BhessDotLom</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -51,7 +51,7 @@
     <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <i class="fa-solid fa-chess-knight text-2xl text-amber-500"></i>
-        <h1 class="text-xl font-bold tracking-wider text-slate-100">GRANDMASTER <span class="text-amber-500">CHESS</span></h1>
+        <h1 class="text-xl font-bold tracking-wider text-slate-100">BHESS<span class="text-amber-500">DOTLOM</span></h1>
       </div>
 
       <!-- Mode Selector Tabs -->
@@ -76,7 +76,7 @@
           </button>
         </div>
         <button id="btn-auth-open" onclick="openAuthModal()" class="px-4 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-sm font-bold rounded-xl transition-all shadow-lg">
-          <i class="fa-solid fa-user mr-2"></i>Sign In
+          <i class="fa-solid fa-user-plus mr-2"></i>Create Account / Sign In
         </button>
       </div>
     </div>
@@ -178,7 +178,7 @@
         <!-- Join Room Section -->
         <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-3">
           <h3 class="text-sm font-bold text-amber-400">Join Existing Room</h3>
-          <input type="text" id="join-room-input" placeholder="e.g. CHESS-8421" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 uppercase font-mono tracking-widest text-center focus:outline-none focus:border-amber-500" />
+          <input type="text" id="join-room-input" placeholder="e.g. BHESS-8421" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 uppercase font-mono tracking-widest text-center focus:outline-none focus:border-amber-500" />
           <button onclick="joinOnlineRoom()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors">
             Join Match
           </button>
@@ -189,7 +189,6 @@
       <div class="bg-slate-900/80 rounded-2xl p-4 border border-slate-800 shadow-xl flex-1 flex flex-col min-h-[200px]">
         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i class="fa-solid fa-list-ol mr-2 text-amber-500"></i>Move History</h3>
         <div id="move-history" class="flex-1 overflow-y-auto custom-scrollbar bg-slate-950 rounded-xl p-3 text-xs font-mono grid grid-cols-2 gap-x-4 gap-y-1 content-start max-h-[180px]">
-          <!-- Dynamic moves rendered here -->
         </div>
       </div>
 
@@ -219,7 +218,6 @@
 
         <!-- CHESS BOARD GRID -->
         <div id="chess-board" class="w-full max-w-[560px] aspect-square grid grid-cols-8 grid-rows-8 border-2 border-slate-700 rounded-lg overflow-hidden shadow-2xl relative">
-          <!-- 64 Squares generated dynamically -->
         </div>
 
         <!-- PLAYER CARD -->
@@ -229,7 +227,7 @@
               <i class="fa-solid fa-user"></i>
             </div>
             <div>
-              <div id="player-name" class="text-xs font-bold text-slate-200">You (1200)</div>
+              <div id="player-name" class="text-xs font-bold text-slate-200"> You (1200)</div>
               <div id="player-material" class="text-[10px] text-slate-400 font-mono">Material: 0</div>
             </div>
           </div>
@@ -261,45 +259,73 @@
        MODALS
        ========================================================================== -->
 
-  <!-- AUTH / ACCOUNT MODAL -->
+  <!-- AUTH / ACCOUNT MODAL (DEFAULT TO CREATE ACCOUNT FIRST) -->
   <div id="modal-auth" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-5 relative">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 relative">
       <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
         <i class="fa-solid fa-xmark"></i>
       </button>
 
       <div class="text-center">
-        <i class="fa-solid fa-shield-halved text-4xl text-amber-500 mb-2"></i>
-        <h2 id="auth-modal-title" class="text-xl font-extrabold text-slate-100">Sign In to Your Account</h2>
-        <p class="text-xs text-slate-400 mt-1">Track your Elo rating, game history, and multiplayer stats</p>
+        <i class="fa-solid fa-chess-knight text-4xl text-amber-500 mb-2"></i>
+        <h2 class="text-xl font-extrabold text-slate-100">Welcome to BhessDotLom</h2>
+        <p id="auth-subtitle" class="text-xs text-slate-400 mt-1">Create an account first to start tracking your Elo & stats</p>
       </div>
 
-      <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="flex flex-col gap-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Username</label>
-          <input type="text" id="auth-username" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500" placeholder="e.g. GrandmasterFlex" />
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Password</label>
-          <input type="password" id="auth-password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500" placeholder="••••••••" />
-        </div>
-        <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-sm uppercase rounded-xl shadow-lg transition-all mt-2">
-          Sign In / Register
-        </button>
-      </form>
+      <!-- Quick Gmail Registration Button -->
+      <button onclick="handleGoogleSignIn()" class="w-full py-2.5 bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs rounded-xl flex items-center justify-center gap-3 transition-colors shadow-md">
+        <svg class="w-4 h-4" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        Create Account with Gmail
+      </button>
 
       <div class="relative flex items-center justify-center my-1">
         <div class="border-t border-slate-800 w-full"></div>
-        <span class="bg-slate-900 px-3 text-[10px] font-bold text-slate-500 uppercase absolute">OR</span>
+        <span class="bg-slate-900 px-3 text-[10px] font-bold text-slate-500 uppercase absolute">OR MANUAL FORM</span>
       </div>
 
-      <button onclick="continueAsGuest()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs uppercase rounded-xl border border-slate-700 transition-colors">
-        Continue as Guest
-      </button>
+      <!-- Auth Mode Switch Tabs -->
+      <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+        <button id="auth-mode-register" onclick="setAuthMode('register')" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition-all">Create Account</button>
+        <button id="auth-mode-signin" onclick="setAuthMode('signin')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition-all">Sign In</button>
+      </div>
+
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="flex flex-col gap-3">
+        <div id="field-email">
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Gmail / Email Address</label>
+          <input type="email" id="auth-email" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500" placeholder="yourname@gmail.com" />
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Username</label>
+          <input type="text" id="auth-username" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500" placeholder="e.g. BhessMaster" />
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Password</label>
+          <input type="password" id="auth-password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500" placeholder="••••••••" />
+        </div>
+
+        <div id="auth-error" class="hidden text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 p-2 rounded-lg text-center font-semibold"></div>
+
+        <button type="submit" id="auth-submit-btn" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all mt-1">
+          Create Account & Log In
+        </button>
+      </form>
+
+      <div class="border-t border-slate-800 pt-2">
+        <button onclick="continueAsGuest()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 font-bold text-xs uppercase rounded-xl border border-slate-700/60 transition-colors">
+          Continue as Guest
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- PROMINENT GAME OVER MODAL -->
+  <!-- GAME OVER MODAL -->
   <div id="modal-game-over" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center relative overflow-hidden">
       <div id="game-over-icon-box" class="w-20 h-20 mx-auto rounded-full flex items-center justify-center text-4xl mb-4 bg-gradient-to-tr from-emerald-600 to-green-400 text-white shadow-emerald-900/50 shadow-xl border border-emerald-300/30">
@@ -352,13 +378,14 @@
        ========================================================================== */
     let game = new Chess();
     let currentUser = null;
-    let currentMode = 'bot'; // 'bot' or 'online'
+    let currentMode = 'bot';
     let botLevel = 400;
     let playerColor = 'w';
     let boardFlipped = false;
     let selectedSquare = null;
     let validMoves = [];
     let isGameActive = false;
+    let currentAuthMode = 'register'; // Default to Create Account first
 
     // Timers
     let initialTime = 300;
@@ -370,7 +397,7 @@
     let mqttClient = null;
     let currentRoomCode = null;
 
-    // Piece Symbol Mapping
+    // Unicode Chess Pieces Mapping
     const PIECE_SYMBOLS = {
       'w': { 'p': '♙', 'r': '♖', 'n': '♘', 'b': '♗', 'q': '♕', 'k': '♔' },
       'b': { 'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚' }
@@ -425,10 +452,19 @@
     }
 
     /* ==========================================================================
-       3. USER ACCOUNT & LOCAL STORAGE MANAGEMENT
+       3. USER ACCOUNTS & GMAIL / CREATION SYSTEM
        ========================================================================== */
+    function getStoredAccounts() {
+      const accs = localStorage.getItem('bhess_accounts');
+      return accs ? JSON.parse(accs) : {};
+    }
+
+    function saveAccounts(accs) {
+      localStorage.setItem('bhess_accounts', JSON.stringify(accs));
+    }
+
     function loadUserAccount() {
-      const stored = localStorage.getItem('grandmaster_user');
+      const stored = localStorage.getItem('bhess_active_user');
       if (stored) {
         currentUser = JSON.parse(stored);
       } else {
@@ -439,7 +475,12 @@
 
     function saveUserAccount() {
       if (currentUser) {
-        localStorage.setItem('grandmaster_user', JSON.stringify(currentUser));
+        localStorage.setItem('bhess_active_user', JSON.stringify(currentUser));
+        if (currentUser.username !== 'Guest User') {
+          const accounts = getStoredAccounts();
+          accounts[currentUser.username.toLowerCase()] = currentUser;
+          saveAccounts(accounts);
+        }
       }
     }
 
@@ -458,29 +499,143 @@
       }
     }
 
-    function openAuthModal() { document.getElementById('modal-auth').classList.remove('hidden'); }
-    function closeAuthModal() { document.getElementById('modal-auth').classList.add('hidden'); }
+    function openAuthModal() {
+      document.getElementById('modal-auth').classList.remove('hidden');
+      document.getElementById('auth-error').classList.add('hidden');
+      setAuthMode('register'); // Always default to Create Account when opening modal
+    }
 
-    function handleAuthSubmit(e) {
-      e.preventDefault();
-      const username = document.getElementById('auth-username').value.trim();
-      if (!username) return;
+    function closeAuthModal() {
+      document.getElementById('modal-auth').classList.add('hidden');
+    }
 
-      currentUser = { username: username, elo: 1200, wins: 0, losses: 0, draws: 0, history: [] };
+    function setAuthMode(mode) {
+      currentAuthMode = mode;
+      const signinBtn = document.getElementById('auth-mode-signin');
+      const registerBtn = document.getElementById('auth-mode-register');
+      const emailField = document.getElementById('field-email');
+      const submitBtn = document.getElementById('auth-submit-btn');
+      const subtitle = document.getElementById('auth-subtitle');
+      document.getElementById('auth-error').classList.add('hidden');
+
+      if (mode === 'register') {
+        registerBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition-all";
+        signinBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition-all";
+        emailField.classList.remove('hidden');
+        submitBtn.innerText = "Create Account & Log In";
+        subtitle.innerText = "Create an account first using your Gmail to track your Elo & stats";
+      } else {
+        signinBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition-all";
+        registerBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition-all";
+        emailField.classList.add('hidden');
+        submitBtn.innerText = "Sign In";
+        subtitle.innerText = "Welcome back! Enter your details to log in";
+      }
+    }
+
+    function handleGoogleSignIn() {
+      const email = prompt("Enter your Gmail address to create your account:");
+      if (!email || !email.includes('@')) {
+        if (email) alert("Please enter a valid Gmail address.");
+        return;
+      }
+
+      const defaultUsername = email.split('@')[0];
+      const accounts = getStoredAccounts();
+      const existingKey = Object.keys(accounts).find(k => accounts[k].email === email || k === defaultUsername.toLowerCase());
+
+      if (existingKey) {
+        currentUser = accounts[existingKey];
+        alert(`Account found! Signed in as ${currentUser.username} (${email})`);
+      } else {
+        currentUser = {
+          username: defaultUsername,
+          email: email,
+          password: 'google_oauth_auth',
+          elo: 1200,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          history: []
+        };
+        accounts[defaultUsername.toLowerCase()] = currentUser;
+        saveAccounts(accounts);
+        alert(`Account successfully created for ${currentUser.username} (${email})! You are now logged in.`);
+      }
+
       saveUserAccount();
       updateUserUI();
       closeAuthModal();
     }
 
+    function handleAuthSubmit(e) {
+      e.preventDefault();
+      const username = document.getElementById('auth-username').value.trim();
+      const password = document.getElementById('auth-password').value.trim();
+      const email = document.getElementById('auth-email').value.trim();
+      const errorEl = document.getElementById('auth-error');
+
+      errorEl.classList.add('hidden');
+      const accounts = getStoredAccounts();
+      const key = username.toLowerCase();
+
+      if (currentAuthMode === 'register') {
+        if (!email || !email.includes('@')) {
+          errorEl.innerText = "Please enter a valid Gmail / email address.";
+          errorEl.classList.remove('hidden');
+          return;
+        }
+        if (accounts[key]) {
+          errorEl.innerText = "Username already exists. Switch to 'Sign In' or choose a new username.";
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        // Create Account & Auto Log In
+        currentUser = {
+          username: username,
+          email: email,
+          password: password,
+          elo: 1200,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          history: []
+        };
+        accounts[key] = currentUser;
+        saveAccounts(accounts);
+        saveUserAccount();
+        updateUserUI();
+        closeAuthModal();
+      } else {
+        // Sign In Validation
+        if (!accounts[key]) {
+          errorEl.innerText = "Account not found. Click 'Create Account' above to create one first!";
+          errorEl.classList.remove('hidden');
+          return;
+        }
+        if (accounts[key].password !== password) {
+          errorEl.innerText = "Incorrect password. Please try again.";
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        currentUser = accounts[key];
+        saveUserAccount();
+        updateUserUI();
+        closeAuthModal();
+      }
+    }
+
     function continueAsGuest() {
       currentUser = { username: 'Guest User', elo: 1200, wins: 0, losses: 0, draws: 0, history: [] };
-      saveUserAccount();
+      localStorage.removeItem('bhess_active_user');
       updateUserUI();
       closeAuthModal();
     }
 
     function logoutUser() {
-      localStorage.removeItem('grandmaster_user');
+      localStorage.removeItem('bhess_active_user');
       currentUser = { username: 'Guest User', elo: 1200, wins: 0, losses: 0, draws: 0, history: [] };
       updateUserUI();
     }
@@ -629,7 +784,6 @@
         }
       }
 
-      // Piece selection
       const piece = game.get(square);
       if (piece && piece.color === game.turn()) {
         selectedSquare = square;
@@ -643,7 +797,7 @@
     }
 
     /* ==========================================================================
-       6. BOT ENGINE (MiniMax AI)
+       6. BOT AI ENGINE
        ========================================================================== */
     function startBotGame() {
       game.reset();
@@ -677,7 +831,6 @@
       if (botLevel <= 400) {
         chosenMove = moves[Math.floor(Math.random() * moves.length)];
       } else {
-        // Prioritize capture or random
         const captures = moves.filter(m => m.captured);
         if (captures.length > 0 && Math.random() < (botLevel / 2000)) {
           chosenMove = captures[Math.floor(Math.random() * captures.length)];
@@ -797,7 +950,7 @@
     }
 
     /* ==========================================================================
-       8. GAME OVER OVERLAY SCREEN & ELO RATING UPDATES (Part 3)
+       8. GAME OVER OVERLAY SCREEN & ELO RATING UPDATES
        ========================================================================== */
     function checkGameOver() {
       if (!isGameActive) return false;
@@ -840,7 +993,6 @@
         eloDelta = 0;
       }
 
-      // Update User Elo & History
       if (currentUser && currentUser.username !== 'Guest User') {
         currentUser.elo = Math.max(100, currentUser.elo + eloDelta);
         if (resultOutcome === 'WIN') currentUser.wins++;
@@ -860,7 +1012,6 @@
         updateUserUI();
       }
 
-      // Show Prominent Game Over Modal
       showGameOverModal(resultOutcome, reasonText, eloDelta);
     }
 
@@ -902,10 +1053,10 @@
     }
 
     /* ==========================================================================
-       9. MULTIPLAYER MQTT WEBSOCKET CONNECTION (Part 3)
+       9. MULTIPLAYER MQTT WEBSOCKET CONNECTION
        ========================================================================== */
     function createOnlineRoom() {
-      const code = 'CHESS-' + Math.floor(1000 + Math.random() * 9000);
+      const code = 'BHESS-' + Math.floor(1000 + Math.random() * 9000);
       currentRoomCode = code;
 
       const side = document.getElementById('online-side-choice').value;
@@ -929,10 +1080,9 @@
     function connectMQTT(roomCode, isHost) {
       if (mqttClient) mqttClient.end();
 
-      // HiveMQ Public WebSocket Broker
       mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
-      const topic = `grandmaster_chess_v2/room/${roomCode}`;
+      const topic = `bhess_dot_lom_v1/room/${roomCode}`;
 
       mqttClient.on('connect', () => {
         mqttClient.subscribe(topic);
@@ -958,7 +1108,7 @@
 
     function publishMQTT(type, extraData) {
       if (!mqttClient || !currentRoomCode) return;
-      const topic = `grandmaster_chess_v2/room/${currentRoomCode}`;
+      const topic = `bhess_dot_lom_v1/room/${currentRoomCode}`;
       const packet = JSON.stringify({
         type: type,
         sender: currentUser.username,
@@ -970,7 +1120,6 @@
     function handleMQTTMessage(payload, isHost) {
       if (payload.type === 'join') {
         if (isHost) {
-          const oppColor = playerColor === 'w' ? 'b' : 'w';
           publishMQTT('start', {
             hostColor: playerColor,
             timeControl: initialTime
@@ -996,19 +1145,6 @@
         }
       } else if (payload.type === 'resign') {
         handleGameOver('WIN_RESIGN', 'Opponent Resigned');
-      } else if (payload.type === 'rematch_offer') {
-        if (confirm('Opponent requested a rematch. Accept?')) {
-          publishMQTT('rematch_response', { accepted: true });
-          startOnlineMatch(playerColor, 'Online Opponent');
-        } else {
-          publishMQTT('rematch_response', { accepted: false });
-        }
-      } else if (payload.type === 'rematch_response') {
-        if (payload.accepted) {
-          startOnlineMatch(playerColor, 'Online Opponent');
-        } else {
-          alert('Opponent declined rematch.');
-        }
       }
     }
 
