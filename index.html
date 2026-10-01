@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grandmaster Chess - Modern Online & Bot Platform</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        chess: {
+                            dark: '#1e293b',
+                            light: '#334155',
+                            gold: '#f59e0b',
+                            goldHover: '#d97706',
+                            emerald: '#10b981',
+                            boardLight: '#eeeed2',
+                            boardDark: '#769656',
+                            highlight: 'rgba(245, 158, 11, 0.5)',
+                            moveTarget: 'rgba(16, 185, 129, 0.4)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chess.js Logic Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Chessboard Styling */
+        .chessboard-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            aspect-ratio: 1 / 1;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .square {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+
+        /* Board Themes */
+        .theme-classic .sq-light { background-color: #eeeed2; color: #769656; }
+        .theme-classic .sq-dark { background-color: #769656; color: #eeeed2; }
+
+        .theme-slate .sq-light { background-color: #e2e8f0; color: #475569; }
+        .theme-slate .sq-dark { background-color: #475569; color: #e2e8f0; }
+
+        .theme-wood .sq-light { background-color: #f0d9b5; color: #b58863; }
+        .theme-wood .sq-dark { background-color: #b58863; color: #f0d9b5; }
+
+        .theme-cyber .sq-light { background-color: #38bdf8; color: #0284c7; }
+        .theme-cyber .sq-dark { background-color: #0369a1; color: #38bdf8; }
+
+        .square.selected {
+            background-color: rgba(245, 158, 11, 0.65) !important;
+        }
+
+        .square.last-move {
+            background-color: rgba(251, 191, 36, 0.35) !important;
+        }
+
+        .square.check-warning {
+            background-color: rgba(239, 68, 68, 0.75) !important;
+            animation: pulse-red 1.2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .move-dot {
+            width: 28%;
+            height: 28%;
+            border-radius: 50%;
+            background-color: rgba(16, 185, 129, 0.6);
+            pointer-events: none;
+        }
+
+        .capture-ring {
+            width: 85%;
+            height: 85%;
+            border-radius: 50%;
+            border: 4px solid rgba(239, 68, 68, 0.65);
+            pointer-events: none;
+            position: absolute;
+        }
+
+        .piece {
+            width: 88%;
+            height: 88%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 10;
+            transition: transform 0.1s ease;
+        }
+
+        .piece:active {
+            transform: scale(1.15);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col md:flex-row min-h-screen">
+
+    <!-- Authentication Modal -->
+    <div id="authModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-gradient-to-tr from-amber-500 to-amber-300 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-amber-500/20 mb-3">
+                    <i class="fa-solid me-0 fa-chess-king text-slate-950 text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-100 tracking-tight">Grandmaster Chess</h2>
+                <p class="text-slate-400 text-sm mt-1">Sign in to save ratings, play online & battle AI</p>
+            </div>
+
+            <!-- Auth Tabs -->
+            <div class="flex border-b border-slate-800 mb-6">
+                <button id="tabLogin" onclick="switchAuthTab('login')" class="flex-1 pb-3 text-center font-medium border-b-2 border-amber-500 text-amber-400 transition-colors">Log In</button>
+                <button id="tabRegister" onclick="switchAuthTab('register')" class="flex-1 pb-3 text-center font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">Sign Up</button>
+            </div>
+
+            <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div id="displayNameGroup" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Display Name</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                        <input type="text" id="authDisplayName" placeholder="e.g. ChessMaster99" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 focus:outline-none focus:border-amber-500 transition-colors">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Email Address</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                        <input type="email" id="authEmail" required placeholder="player@chess.com" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 focus:outline-none focus:border-amber-500 transition-colors">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-3.5 text-slate-500 text-sm"></i>
+                        <input type="password" id="authPassword" required placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 focus:outline-none focus:border-amber-500 transition-colors">
+                    </div>
+                </div>
+
+                <div id="authError" class="hidden text-xs text-red-400 bg-red-950/50 border border-red-800 rounded-lg p-2.5 text-center"></div>
+
+                <button type="submit" id="authSubmitBtn" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-98">
+                    Log In
+                </button>
+            </form>
+
+            <div class="mt-4 pt-4 border-t border-slate-800 text-center">
+                <button onclick="handleGuestAuth()" class="text-xs text-slate-400 hover:text-amber-400 transition-colors font-medium">
+                    <i class="fa-solid fa-user-ninja mr-1"></i> Play as Guest / Instant Play
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Navigation Bar -->
+    <div class="md:hidden bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-30">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 bg-amber-500 rounded-lg flex items-center justify-center text-slate-950 font-bold">
+                <i class="fa-solid fa-chess-king text-lg"></i>
+            </div>
+            <span class="font-bold text-lg text-slate-100">Grandmaster</span>
+        </div>
+        <button onclick="toggleMobileMenu()" class="text-slate-300 hover:text-amber-400 text-xl focus:outline-none p-1">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+
+    <!-- Sidebar Menu Navigation -->
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-40 w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between p-4 shrink-0">
+        <div class="space-y-6">
+            <!-- App Header Brand -->
+            <div class="hidden md:flex items-center space-x-3 px-2 pt-2">
+                <div class="w-10 h-10 bg-gradient-to-tr from-amber-500 to-amber-400 rounded-xl flex items-center justify-center text-slate-950 shadow-md shadow-amber-500/20">
+                    <i class="fa-solid fa-chess-king text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-slate-100 text-lg leading-tight">Grandmaster</h1>
+                    <p class="text-xs text-amber-500 font-semibold tracking-wide">CHESS ARENA</p>
+                </div>
+            </div>
+
+            <!-- User Info Summary Box -->
+            <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-3 flex items-center space-x-3">
+                <div id="userAvatar" class="w-10 h-10 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold flex items-center justify-center text-lg shrink-0">
+                    U
+                </div>
+                <div class="overflow-hidden">
+                    <div id="userName" class="font-bold text-sm text-slate-100 truncate">Loading...</div>
+                    <div class="flex items-center space-x-1.5 text-xs text-slate-400">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span id="userEloBadge">1200 Elo</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Navigation Links -->
+            <nav class="space-y-1.5">
+                <button onclick="switchView('account')" id="navAccount" class="nav-item w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-slate-800 hover:text-amber-400 transition-all">
+                    <i class="fa-solid fa-user-circle text-lg w-5 text-center"></i>
+                    <span>Account & Stats</span>
+                </button>
+
+                <button onclick="switchView('bots')" id="navBots" class="nav-item w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-slate-800 hover:text-amber-400 transition-all">
+                    <i class="fa-solid fa-robot text-lg w-5 text-center"></i>
+                    <span>Play with Bots</span>
+                </button>
+
+                <button onclick="switchView('online')" id="navOnline" class="nav-item w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-slate-800 hover:text-amber-400 transition-all">
+                    <i class="fa-solid fa-globe text-lg w-5 text-center"></i>
+                    <span>Play Online</span>
+                </button>
+
+                <button onclick="switchView('game')" id="navGame" class="nav-item hidden w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl font-medium text-sm text-amber-400 bg-amber-500/10 border border-amber-500/30 transition-all">
+                    <i class="fa-solid fa-chess-board text-lg w-5 text-center animate-bounce"></i>
+                    <span>Active Match</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer Controls -->
+        <div class="space-y-3 pt-4 border-t border-slate-800">
+            <!-- Board Style Selector -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1.5 px-1">Board Theme</label>
+                <select id="themeSelector" onchange="changeBoardTheme(this.value)" class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 focus:outline-none focus:border-amber-500">
+                    <option value="theme-classic">Emerald Classic</option>
+                    <option value="theme-slate">Slate Dark</option>
+                    <option value="theme-wood">Classic Wood</option>
+                    <option value="theme-cyber">Cyber Neon</option>
+                </select>
+            </div>
+
+            <!-- Logout Button -->
+            <button onclick="handleLogout()" class="w-full flex items-center justify-center space-x-2 py-2.5 px-3 bg-slate-800/60 hover:bg-red-950/40 hover:text-red-400 border border-slate-700/50 hover:border-red-800/50 rounded-xl text-xs font-semibold text-slate-400 transition-all">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Sign Out</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+
+        <!-- VIEW 1: ACCOUNT & STATS -->
+        <section id="viewAccount" class="p-4 sm:p-8 max-w-5xl mx-auto w-full space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg">
+                <div class="flex items-center space-x-4">
+                    <div id="accountBigAvatar" class="w-16 h-16 rounded-2xl bg-amber-500 text-slate-950 font-extrabold text-2xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+                        U
+                    </div>
+                    <div>
+                        <h2 id="accountDisplayName" class="text-2xl font-bold text-slate-100">Player Name</h2>
+                        <p id="accountEmail" class="text-xs text-slate-400 mt-0.5">user@example.com</p>
+                        <div class="flex items-center space-x-2 mt-2">
+                            <span class="px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold rounded-lg">Bot Elo: <span id="accountBotElo">1200</span></span>
+                            <span class="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-lg">Online Elo: <span id="accountOnlineElo">1200</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Overview Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl text-center">
+                    <div class="text-xs font-semibold text-slate-400 uppercase">Played</div>
+                    <div id="statTotalGames" class="text-2xl font-black text-slate-100 mt-1">0</div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl text-center">
+                    <div class="text-xs font-semibold text-emerald-400 uppercase">Victories</div>
+                    <div id="statWins" class="text-2xl font-black text-emerald-400 mt-1">0</div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl text-center">
+                    <div class="text-xs font-semibold text-red-400 uppercase">Defeats</div>
+                    <div id="statLosses" class="text-2xl font-black text-red-400 mt-1">0</div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl text-center">
+                    <div class="text-xs font-semibold text-amber-400 uppercase">Draws</div>
+                    <div id="statDraws" class="text-2xl font-black text-amber-400 mt-1">0</div>
+                </div>
+            </div>
+
+            <!-- Game History Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h3 class="text-lg font-bold text-slate-100 flex items-center space-x-2">
+                    <i class="fa-solid fa-clock-rotate-left text-amber-500"></i>
+                    <span>Match History</span>
+                </h3>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-800/60 text-slate-400 font-semibold uppercase">
+                            <tr>
+                                <th class="p-3 rounded-l-lg">Result</th>
+                                <th class="p-3">Opponent</th>
+                                <th class="p-3">Type</th>
+                                <th class="p-3">Date</th>
+                                <th class="p-3 text-right rounded-r-lg">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-800 text-slate-300">
+                            <!-- Populated dynamically via JS -->
+                            <tr>
+                                <td colspan="5" class="text-center py-8 text-slate-500">No match records yet. Play a game against AI or Online!</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: PLAY WITH BOTS -->
+        <section id="viewBots" class="hidden p-4 sm:p-8 max-w-5xl mx-auto w-full space-y-6">
+            <div class="text-center max-w-xl mx-auto space-y-2">
+                <h2 class="text-3xl font-extrabold text-slate-100">Play Against AI Bots</h2>
+                <p class="text-sm text-slate-400">Choose a bot personality matching your target Elo rating.</p>
+            </div>
+
+            <!-- Bot Options Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Bot 400 -->
+                <div onclick="selectBot(400)" id="botCard400" class="bot-card bg-slate-900 border-2 border-slate-800 hover:border-amber-500/50 rounded-2xl p-5 cursor-pointer transition-all space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center font-bold text-xl">
+                            <i class="fa-solid fa-seedling"></i>
+                        </div>
+                        <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 font-bold text-xs rounded-lg">400 Elo</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base text-slate-100">Novice Pawn</h4>
+                        <p class="text-xs text-slate-400 mt-1">Plays relaxed casual moves with occasional blunder oversights.</p>
+                    </div>
+                </div>
+
+                <!-- Bot 800 -->
+                <div onclick="selectBot(800)" id="botCard800" class="bot-card bg-slate-900 border-2 border-slate-800 hover:border-amber-500/50 rounded-2xl p-5 cursor-pointer transition-all space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 bg-blue-500/10 text-blue-400 rounded-xl flex items-center justify-center font-bold text-xl">
+                            <i class="fa-solid fa-chess-knight"></i>
+                        </div>
+                        <span class="px-2.5 py-1 bg-blue-500/10 text-blue-400 font-bold text-xs rounded-lg">800 Elo</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base text-slate-100">Casual Apprentice</h4>
+                        <p class="text-xs text-slate-400 mt-1">Evaluates basic piece captures and simple tactical threats.</p>
+                    </div>
+                </div>
+
+                <!-- Bot 1200 -->
+                <div onclick="selectBot(1200)" id="botCard1200" class="bot-card bg-slate-900 border-2 border-amber-500 rounded-2xl p-5 cursor-pointer transition-all space-y-3 shadow-lg shadow-amber-500/10">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-xl flex items-center justify-center font-bold text-xl">
+                            <i class="fa-solid fa-chess-rook"></i>
+                        </div>
+                        <span class="px-2.5 py-1 bg-amber-500/10 text-amber-400 font-bold text-xs rounded-lg">1200 Elo</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base text-slate-100">Intermediate Club</h4>
+                        <p class="text-xs text-slate-400 mt-1">Uses positional evaluation tables & 2-ply minimax depth.</p>
+                    </div>
+                </div>
+
+                <!-- Bot 1600 -->
+                <div onclick="selectBot(1600)" id="botCard1600" class="bot-card bg-slate-900 border-2 border-slate-800 hover:border-amber-500/50 rounded-2xl p-5 cursor-pointer transition-all space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 bg-purple-500/10 text-purple-400 rounded-xl flex items-center justify-center font-bold text-xl">
+                            <i class="fa-solid fa-chess-queen"></i>
+                        </div>
+                        <span class="px-2.5 py-1 bg-purple-500/10 text-purple-400 font-bold text-xs rounded-lg">1600 Elo</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base text-slate-100">Advanced Tactician</h4>
+                        <p class="text-xs text-slate-400 mt-1">Deep search engine with alpha-beta pruning & pawn structure analysis.</p>
+                    </div>
+                </div>
+
+                <!-- Bot 2000 -->
+                <div onclick="selectBot(2000)" id="botCard2000" class="bot-card bg-slate-900 border-2 border-slate-800 hover:border-amber-500/50 rounded-2xl p-5 cursor-pointer transition-all space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center font-bold text-xl">
+                            <i class="fa-solid fa-chess-king"></i>
+                        </div>
+                        <span class="px-2.5 py-1 bg-red-500/10 text-red-400 font-bold text-xs rounded-lg">2000 Elo</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base text-slate-100">Grandmaster AI</h4>
+                        <p class="text-xs text-slate-400 mt-1">Rigorous position calculation with strict move ordering and king safety.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Match Settings Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 max-w-xl mx-auto">
+                <h3 class="text-base font-bold text-slate-100">Game Configuration</h3>
+
+                <!-- Side Selection -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-2">Play As</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="setBotSide('w')" id="sideBtnW" class="py-2.5 px-3 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center space-x-2 border border-amber-500">
+                            <i class="fa-solid fa-chess-king text-white"></i>
+                            <span>White</span>
+                        </button>
+                        <button onclick="setBotSide('random')" id="sideBtnRandom" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center space-x-2 border border-slate-700">
+                            <i class="fa-solid fa-shuffle text-amber-400"></i>
+                            <span>Random</span>
+                        </button>
+                        <button onclick="setBotSide('b')" id="sideBtnB" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center space-x-2 border border-slate-700">
+                            <i class="fa-solid fa-chess-king text-slate-900"></i>
+                            <span>Black</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Time Control -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-2">Time Control</label>
+                    <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        <button onclick="setBotTimeControl(1)" id="timeBtn1" class="py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 text-center">1 min</button>
+                        <button onclick="setBotTimeControl(3)" id="timeBtn3" class="py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 text-center">3 min</button>
+                        <button onclick="setBotTimeControl(5)" id="timeBtn5" class="py-2 bg-amber-500/20 border border-amber-500 text-amber-400 rounded-lg text-xs font-bold text-center">5 min</button>
+                        <button onclick="setBotTimeControl(10)" id="timeBtn10" class="py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 text-center">10 min</button>
+                        <button onclick="setBotTimeControl(0)" id="timeBtn0" class="py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 text-center">∞</button>
+                    </div>
+                </div>
+
+                <button onclick="startBotGame()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold py-3.5 rounded-xl shadow-lg shadow-amber-500/20 transition-all text-sm uppercase tracking-wider">
+                    <i class="fa-solid fa-play mr-2"></i> Start Game
+                </button>
+            </div>
+        </section>
+
+        <!-- VIEW 3: PLAY ONLINE LOBBY -->
+        <section id="viewOnline" class="hidden p-4 sm:p-8 max-w-4xl mx-auto w-full space-y-6">
+            <div class="text-center max-w-xl mx-auto space-y-2">
+                <h2 class="text-3xl font-extrabold text-slate-100">Play Online Multiplayer</h2>
+                <p class="text-sm text-slate-400">Create a room with custom settings or join an existing game with a code.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Create Room Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-amber-500/10 text-amber-400 rounded-xl flex items-center justify-center font-bold text-lg">
+                                <i class="fa-solid fa-plus"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-base text-slate-100">Create Private Room</h3>
+                                <p class="text-xs text-slate-400">Generate a unique code to invite a friend</p>
+                            </div>
+                        </div>
+
+                        <!-- Side Selection -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase mb-2">Side</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button onclick="setOnlineSide('w')" id="onSideW" class="py-2 px-2 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs border border-amber-500 text-center">White</button>
+                                <button onclick="setOnlineSide('random')" id="onSideRandom" class="py-2 px-2 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs border border-slate-700 text-center">Random</button>
+                                <button onclick="setOnlineSide('b')" id="onSideB" class="py-2 px-2 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs border border-slate-700 text-center">Black</button>
+                            </div>
+                        </div>
+
+                        <!-- Time Control -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase mb-2">Match Duration</label>
+                            <div class="grid grid-cols-5 gap-1.5">
+                                <button onclick="setOnlineTime(1)" id="onTime1" class="py-1.5 bg-slate-800 border border-slate-700 rounded text-xs font-bold text-slate-300">1m</button>
+                                <button onclick="setOnlineTime(3)" id="onTime3" class="py-1.5 bg-slate-800 border border-slate-700 rounded text-xs font-bold text-slate-300">3m</button>
+                                <button onclick="setOnlineTime(5)" id="onTime5" class="py-1.5 bg-amber-500/20 border border-amber-500 text-amber-400 rounded text-xs font-bold">5m</button>
+                                <button onclick="setOnlineTime(10)" id="onTime10" class="py-1.5 bg-slate-800 border border-slate-700 rounded text-xs font-bold text-slate-300">10m</button>
+                                <button onclick="setOnlineTime(0)" id="onTime0" class="py-1.5 bg-slate-800 border border-slate-700 rounded text-xs font-bold text-slate-300">∞</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="createOnlineRoom()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold py-3 rounded-xl shadow-lg shadow-amber-500/20 transition-all text-xs uppercase tracking-wider">
+                        Create Game Room
+                    </button>
+                </div>
+
+                <!-- Join Room Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center font-bold text-lg">
+                                <i class="fa-solid fa-right-to-bracket"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-base text-slate-100">Join With Code</h3>
+                                <p class="text-xs text-slate-400">Enter 6-character room code to start</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2 pt-2">
+                            <label class="block text-xs font-semibold text-slate-400 uppercase">Join Code</label>
+                            <input type="text" id="joinCodeInput" maxlength="6" placeholder="e.g. KNG892" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-center font-mono font-bold text-lg tracking-widest text-amber-400 focus:outline-none focus:border-amber-500 uppercase">
+                        </div>
+                    </div>
+
+                    <button onclick="joinOnlineRoom()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold py-3 rounded-xl shadow-lg shadow-emerald-500/20 transition-all text-xs uppercase tracking-wider">
+                        Join Match
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: LIVE CHESS GAME ARENA -->
+        <section id="viewGame" class="hidden p-2 sm:p-6 max-w-6xl mx-auto w-full flex-1 flex flex-col justify-center">
+            <!-- Main Responsive Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                <!-- Left Column / Main Chessboard Container (Cols 1-8) -->
+                <div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center space-y-3">
+
+                    <!-- Top Player Info Bar (Black by default / Opponent) -->
+                    <div id="topPlayerBar" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between shadow-md">
+                        <div class="flex items-center space-x-3">
+                            <div id="topPlayerAvatar" class="w-9 h-9 rounded-lg bg-slate-800 text-slate-300 font-bold flex items-center justify-center text-sm border border-slate-700">
+                                B
+                            </div>
+                            <div>
+                                <div id="topPlayerName" class="font-bold text-sm text-slate-100">Opponent</div>
+                                <div id="topCapturedPieces" class="flex items-center space-x-1 text-xs text-slate-400 h-4"></div>
+                            </div>
+                        </div>
+
+                        <!-- Clock -->
+                        <div id="topClock" class="bg-slate-950 border border-slate-800 px-3.5 py-1.5 rounded-lg font-mono font-bold text-lg text-slate-200">
+                            --:--
+                        </div>
+                    </div>
+
+                    <!-- Interactive Chess Board Area -->
+                    <div class="w-full max-w-[540px] aspect-square relative">
+                        <div id="chessboard" class="chessboard-grid theme-classic w-full h-full"></div>
+
+                        <!-- Promotion Choice Overlay Modal -->
+                        <div id="promotionModal" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-30 flex items-center justify-center p-4">
+                            <div class="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-center space-y-3">
+                                <h4 class="text-xs font-bold text-slate-300 uppercase">Promote Pawn</h4>
+                                <div class="flex space-x-3" id="promotionChoices"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Player Info Bar (White by default / User) -->
+                    <div id="bottomPlayerBar" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between shadow-md">
+                        <div class="flex items-center space-x-3">
+                            <div id="bottomPlayerAvatar" class="w-9 h-9 rounded-lg bg-amber-500 text-slate-950 font-bold flex items-center justify-center text-sm">
+                                W
+                            </div>
+                            <div>
+                                <div id="bottomPlayerName" class="font-bold text-sm text-slate-100">You</div>
+                                <div id="bottomCapturedPieces" class="flex items-center space-x-1 text-xs text-slate-400 h-4"></div>
+                            </div>
+                        </div>
+
+                        <!-- Clock -->
+                        <div id="bottomClock" class="bg-slate-950 border border-slate-800 px-3.5 py-1.5 rounded-lg font-mono font-bold text-lg text-amber-400">
+                            --:--
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column / Match Log & Controls (Cols 9-12) -->
+                <div class="lg:col-span-5 xl:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between h-full min-h-[420px] shadow-xl">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div class="flex items-center space-x-2">
+                                <span id="gameStatusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span id="gameStatusText" class="font-bold text-sm text-slate-200">White's Turn</span>
+                            </div>
+                            <span id="gameRoomBadge" class="hidden text-xs bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-mono font-bold"></span>
+                        </div>
+
+                        <!-- Move History PGN Notation Log -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase mb-2">Move Notation Log</label>
+                            <div id="moveLog" class="bg-slate-950 border border-slate-800 rounded-xl p-3 h-48 overflow-y-auto text-xs font-mono grid grid-cols-2 gap-x-4 gap-y-1 text-slate-300">
+                                <div class="col-span-2 text-slate-500 italic text-center py-4">No moves played yet</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- In-Game Action Bar -->
+                    <div class="pt-4 border-t border-slate-800 space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="offerResign()" class="py-2.5 bg-slate-800 hover:bg-red-950/50 hover:text-red-400 border border-slate-700 hover:border-red-800 rounded-xl font-bold text-xs text-slate-300 transition-all flex items-center justify-center space-x-1.5">
+                                <i class="fa-solid fa-flag"></i>
+                                <span>Resign</span>
+                            </button>
+                            <button onclick="flipBoardView()" class="py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl font-bold text-xs text-slate-300 transition-all flex items-center justify-center space-x-1.5">
+                                <i class="fa-solid fa-rotate"></i>
+                                <span>Flip View</span>
+                            </button>
+                        </div>
+                        <button onclick="exitGameArena()" class="w-full py-2 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl font-semibold text-xs text-slate-400 hover:text-slate-200 transition-all">
+                            Leave Arena
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Online Lobby Waiting Modal -->
+    <div id="roomModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full text-center space-y-5 shadow-2xl">
+            <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-clock animate-spin"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-slate-100">Waiting for Opponent</h3>
+                <p class="text-xs text-slate-400 mt-1">Share this 6-character Join Code with your friend:</p>
+            </div>
+
+            <div class="bg-slate-950 border border-amber-500/40 rounded-xl p-4 flex items-center justify-between">
+                <span id="modalRoomCode" class="font-mono font-extrabold text-2xl text-amber-400 tracking-wider">------</span>
+                <button onclick="copyRoomCode()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition-all">
+                    <i class="fa-solid fa-copy mr-1"></i> Copy
+                </button>
+            </div>
+
+            <button onclick="cancelRoomWaiting()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">
+                Cancel Game
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Over Summary Modal -->
+    <div id="gameOverModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-md w-full text-center space-y-5 shadow-2xl">
+            <div id="gameOverIcon" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto text-3xl shadow-lg">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+
+            <div>
+                <h3 id="gameOverTitle" class="text-2xl font-extrabold text-slate-100">Checkmate!</h3>
+                <p id="gameOverSubtext" class="text-sm text-slate-400 mt-1">White wins by checkmate.</p>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex justify-around">
+                <div>
+                    <div class="text-xs text-slate-500 font-semibold uppercase">Rating Change</div>
+                    <div id="gameOverEloDiff" class="text-lg font-black text-emerald-400 mt-0.5">+15</div>
+                </div>
+                <div class="border-r border-slate-800"></div>
+                <div>
+                    <div class="text-xs text-slate-500 font-semibold uppercase">Moves Played</div>
+                    <div id="gameOverMoveCount" class="text-lg font-black text-slate-200 mt-0.5">34</div>
+                </div>
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="closeGameOverModal(); switchView('game')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl text-xs">
+                    View Board
+                </button>
+                <button onclick="closeGameOverModal(); switchView('bots')" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl text-xs">
+                    Play Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- JavaScript Application Core Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'chess-master-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "demo-api-key",
+            authDomain: "demo-app.firebaseapp.com",
+            projectId: "demo-app",
+            storageBucket: "demo-app.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Sound FX Engine using Web Audio API
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playTone(freq, duration, type = 'sine') {
+                if (this.muted) return;
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e){}
+            }
+            move() { this.playTone(320, 0.08, 'triangle'); }
+            capture() { this.playTone(180, 0.12, 'square'); }
+            check() { this.playTone(600, 0.2, 'sine'); }
+            victory() {
+                this.playTone(523.25, 0.15); // C5
+                setTimeout(() => this.playTone(659.25, 0.15), 150); // E5
+                setTimeout(() => this.playTone(783.99, 0.3), 300); // G5
+            }
+            defeat() {
+                this.playTone(400, 0.2, 'sawtooth');
+                setTimeout(() => this.playTone(300, 0.3, 'sawtooth'), 200);
+            }
+        }
+        const sound = new SoundFX();
+
+        const PIECE_SVGS = {
+            'wP': '<svg viewBox="0 0 45 45"><path d="M 22.5,9 C 23.88,9 25,10.12 25,11.5 C 25,12.88 23.88,14 22.5,14 C 21.12,14 20,12.88 20,11.5 C 20,10.12 21.12,9 22.5,9 z M 22.5,15 C 25,15 27,17 27,19.5 C 27,21.5 25.5,23 23.5,23.5 L 23.5,28 L 27,28 C 28.5,28 29,29.5 29,31 L 16,31 C 16,29.5 16.5,28 18,28 L 21.5,28 L 21.5,23.5 C 19.5,23 18,21.5 18,19.5 C 18,17 20,15 22.5,15 z M 12,33 L 33,33 L 33,36 L 12,36 L 12,33 z" fill="#ffffff" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+            'wR': '<svg viewBox="0 0 45 45"><g fill="#ffffff" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"><path d="M 9,39 L 36,39 L 36,36 L 9,36 L 9,39 z M 12,36 L 12,32 L 33,32 L 33,36 L 12,36 z M 11,14 L 11,9 L 15,9 L 15,11 L 20,11 L 20,9 L 25,9 L 25,11 L 30,11 L 30,9 L 34,9 L 34,14 L 31,17 L 14,17 L 11,14 z M 14,17 L 31,17 L 31,29.5 L 14,29.5 L 14,17 z"/></g></svg>',
+            'wN': '<svg viewBox="0 0 45 45"><path d="M 22,10 C 18,10 14,12.5 14,18 C 14,21 15,22.5 17,24 C 15,25 12,27 12,31 L 33,31 C 33,26 29,22 28,19 C 28,16 27,10 22,10 z M 24,13 C 24.5,13 25,13.5 25,14 C 25,14.5 24.5,15 24,15 C 23.5,15 23,14.5 23,14 C 23,13.5 23.5,13 24,13 z M 12,33 L 33,33 L 33,36 L 12,36 L 12,33 z" fill="#ffffff" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+            'wB': '<svg viewBox="0 0 45 45"><g fill="#ffffff" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"><path d="M 9,36 L 36,36 L 36,39 L 9,39 L 9,36 z M 11,32 L 34,32 L 33,30 L 12,30 L 11,32 z M 22.5,10 C 20,10 17.5,12 17.5,16 C 17.5,18 18.5,20 20,22 L 18,28 L 27,28 L 25,22 C 26.5,20 27.5,18 27.5,16 C 27.5,12 25,10 22.5,10 z"/><circle cx="22.5" cy="8" r="1.5"/></g></svg>',
+            'wQ': '<svg viewBox="0 0 45 45"><g fill="#ffffff" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"><path d="M 9,26 L 11.5,14.5 L 17.5,21 L 22.5,11 L 27.5,21 L 33.5,14.5 L 36,26 L 9,26 z M 9,28 L 36,28 L 36,32 L 9,32 L 9,28 z M 9,35 L 36,35 L 36,38 L 9,38 L 9,35 z"/><circle cx="9" cy="12" r="1.5"/><circle cx="17.5" cy="18" r="1.5"/><circle cx="22.5" cy="9" r="1.5"/><circle cx="27.5" cy="18" r="1.5"/><circle cx="36" cy="12" r="1.5"/></g></svg>',
+            'wK': '<svg viewBox="0 0 45 45"><g fill="#ffffff" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"><path d="M 22.5,11.5 L 22.5,6 M 20,8.5 L 25,8.5 M 11.5,37 L 33.5,37 L 33.5,34 L 11.5,34 L 11.5,37 z M 13.5,31.5 L 31.5,31.5 L 30,26 L 15,26 L 13.5,31.5 z M 15,24 L 30,24 C 32,20 33,16 22.5,14 C 12,16 13,20 15,24 z"/></g></svg>',
+            'bP': '<svg viewBox="0 0 45 45"><path d="M 22.5,9 C 23.88,9 25,10.12 25,11.5 C 25,12.88 23.88,14 22.5,14 C 21.12,14 20,12.88 20,11.5 C 20,10.12 21.12,9 22.5,9 z M 22.5,15 C 25,15 27,17 27,19.5 C 27,21.5 25.5,23 23.5,23.5 L 23.5,28 L 27,28 C 28.5,28 29,29.5 29,31 L 16,31 C 16,29.5 16.5,28 18,28 L 21.5,28 L 21.5,23.5 C 19.5,23 18,21.5 18,19.5 C 18,17 20,15 22.5,15 z M 12,33 L 33,33 L 33,36 L 12,36 L 12,33 z" fill="#1e293b" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+            'bR': '<svg viewBox="0 0 45 45"><g fill="#1e293b" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"><path d="M 9,39 L 36,39 L 36,36 L 9,36 L 9,39 z M 12,36 L 12,32 L 33,32 L 33,36 L 12,36 z M 11,14 L 11,9 L 15,9 L 15,11 L 20,11 L 20,9 L 25,9 L 25,11 L 30,11 L 30,9 L 34,9 L 34,14 L 31,17 L 14,17 L 11,14 z M 14,17 L 31,17 L 31,29.5 L 14,29.5 L 14,17 z"/></g></svg>',
+            'bN': '<svg viewBox="0 0 45 45"><path d="M 22,10 C 18,10 14,12.5 14,18 C 14,21 15,22.5 17,24 C 15,25 12,27 12,31 L 33,31 C 33,26 29,22 28,19 C 28,16 27,10 22,10 z M 24,13 C 24.5,13 25,13.5 25,14 C 25,14.5 24.5,15 24,15 C 23.5,15 23,14.5 23,14 C 23,13.5 23.5,13 24,13 z M 12,33 L 33,33 L 33,36 L 12,36 L 12,33 z" fill="#1e293b" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+            'bB': '<svg viewBox="0 0 45 45"><g fill="#1e293b" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"><path d="M 9,36 L 36,36 L 36,39 L 9,39 L 9,36 z M 11,32 L 34,32 L 33,30 L 12,30 L 11,32 z M 22.5,10 C 20,10 17.5,12 17.5,16 C 17.5,18 18.5,20 20,22 L 18,28 L 27,28 L 25,22 C 26.5,20 27.5,18 27.5,16 C 27.5,12 25,10 22.5,10 z"/><circle cx="22.5" cy="8" r="1.5"/></g></svg>',
+            'bQ': '<svg viewBox="0 0 45 45"><g fill="#1e293b" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"><path d="M 9,26 L 11.5,14.5 L 17.5,21 L 22.5,11 L 27.5,21 L 33.5,14.5 L 36,26 L 9,26 z M 9,28 L 36,28 L 36,32 L 9,32 L 9,28 z M 9,35 L 36,35 L 36,38 L 9,38 L 9,35 z"/><circle cx="9" cy="12" r="1.5"/><circle cx="17.5" cy="18" r="1.5"/><circle cx="22.5" cy="9" r="1.5"/><circle cx="27.5" cy="18" r="1.5"/><circle cx="36" cy="12" r="1.5"/></g></svg>',
+            'bK': '<svg viewBox="0 0 45 45"><g fill="#1e293b" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"><path d="M 22.5,11.5 L 22.5,6 M 20,8.5 L 25,8.5 M 11.5,37 L 33.5,37 L 33.5,34 L 11.5,34 L 11.5,37 z M 13.5,31.5 L 31.5,31.5 L 30,26 L 15,26 L 13.5,31.5 z M 15,24 L 30,24 C 32,20 33,16 22.5,14 C 12,16 13,20 15,24 z"/></g></svg>'
+        };
+
+        let currentUser = null;
+        let userProfile = {
+            displayName: "Player",
+            email: "",
+            botElo: 1200,
+            onlineElo: 1200,
+            gamesPlayed: 0,
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            history: []
+        };
+
+        // Match State
+        let game = new Chess();
+        let gameMode = 'bot'; // 'bot' or 'online'
+        let playerColor = 'w'; // 'w' or 'b'
+        let boardFlipped = false;
+        let selectedSquare = null;
+        let legalMoves = [];
+        let lastMove = null;
+        let botElo = 1200;
+        let botSideConfig = 'w';
+        let botTimeControl = 5; // mins
+
+        // Online State
+        let onlineSideConfig = 'w';
+        let onlineTimeControl = 5;
+        let activeRoomCode = null;
+        let roomUnsubscribe = null;
+        let isHost = false;
+
+        // Timers
+        let whiteTime = 300;
+        let blackTime = 300;
+        let clockInterval = null;
+        let pendingPromotionMove = null;
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('authModal').classList.add('hidden');
+                await loadUserProfile();
+                showToast(`Welcome, ${userProfile.displayName}!`);
+            } else {
+                // Auto guest fallback
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try { await signInWithCustomToken(auth, __initial_auth_token); }
+                    catch(e) { await signInAnonymously(auth); }
+                } else {
+                    document.getElementById('authModal').classList.remove('hidden');
+                }
+            }
+        });
+
+        window.switchAuthTab = function(tab) {
+            const isReg = tab === 'register';
+            document.getElementById('displayNameGroup').classList.toggle('hidden', !isReg);
+            document.getElementById('tabLogin').className = isReg ? 'flex-1 pb-3 text-center font-medium border-b-2 border-transparent text-slate-400' : 'flex-1 pb-3 text-center font-medium border-b-2 border-amber-500 text-amber-400';
+            document.getElementById('tabRegister').className = isReg ? 'flex-1 pb-3 text-center font-medium border-b-2 border-amber-500 text-amber-400' : 'flex-1 pb-3 text-center font-medium border-b-2 border-transparent text-slate-400';
+            document.getElementById('authSubmitBtn').innerText = isReg ? 'Create Account' : 'Log In';
+        };
+
+        window.handleAuthSubmit = async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const name = document.getElementById('authDisplayName').value || 'Chess Player';
+            const isReg = !document.getElementById('displayNameGroup').classList.contains('hidden');
+            const errDiv = document.getElementById('authError');
+            errDiv.classList.add('hidden');
+
+            try {
+                if (isReg) {
+                    const res = await createUserWithEmailAndPassword(auth, email, password);
+                    await updateProfile(res.user, { displayName: name });
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
+            } catch (err) {
+                errDiv.innerText = err.message.replace('Firebase: ', '');
+                errDiv.classList.remove('hidden');
+            }
+        };
+
+        window.handleGuestAuth = async function() {
+            try {
+                await signInAnonymously(auth);
+            } catch(e) {
+                showToast("Guest login error: " + e.message, "error");
+            }
+        };
+
+        window.handleLogout = async function() {
+            await signOut(auth);
+            location.reload();
+        };
+
+        async function loadUserProfile() {
+            if (!currentUser) return;
+            const userRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'data');
+            try {
+                const snap = await getDoc(userRef);
+                if (snap.exists()) {
+                    userProfile = { ...userProfile, ...snap.data() };
+                } else {
+                    userProfile.displayName = currentUser.displayName || `Player_${currentUser.uid.slice(0, 4)}`;
+                    userProfile.email = currentUser.email || "Guest User";
+                    await setDoc(userRef, userProfile);
+                }
+            } catch(e) {
+                console.error("Profile load err:", e);
+            }
+            updateUserUI();
+        }
+
+        async function saveUserProfile() {
+            if (!currentUser) return;
+            const userRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'data');
+            try {
+                await setDoc(userRef, userProfile);
+            } catch(e){}
+            updateUserUI();
+        }
+
+        function updateUserUI() {
+            const name = userProfile.displayName || "Player";
+            const initial = name.charAt(0).toUpperCase();
+            document.getElementById('userName').innerText = name;
+            document.getElementById('userAvatar').innerText = initial;
+            document.getElementById('userEloBadge').innerText = `${userProfile.botElo} Elo`;
+
+            // Account View updates
+            document.getElementById('accountDisplayName').innerText = name;
+            document.getElementById('accountEmail').innerText = userProfile.email || 'Guest Account';
+            document.getElementById('accountBigAvatar').innerText = initial;
+            document.getElementById('accountBotElo').innerText = userProfile.botElo;
+            document.getElementById('accountOnlineElo').innerText = userProfile.onlineElo;
+            document.getElementById('statTotalGames').innerText = userProfile.gamesPlayed;
+            document.getElementById('statWins').innerText = userProfile.wins;
+            document.getElementById('statLosses').innerText = userProfile.losses;
+            document.getElementById('statDraws').innerText = userProfile.draws;
+
+            // Render History
+            const tbody = document.getElementById('historyTableBody');
+            if (!userProfile.history || userProfile.history.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-500">No match records yet. Play a game against AI or Online!</td></tr>`;
+            } else {
+                tbody.innerHTML = userProfile.history.slice(0, 10).map(m => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-3 font-bold ${m.res === 'Victory' ? 'text-emerald-400' : m.res === 'Defeat' ? 'text-red-400' : 'text-amber-400'}">${m.res}</td>
+                        <td class="p-3">${m.opponent}</td>
+                        <td class="p-3 text-slate-400">${m.type}</td>
+                        <td class="p-3 text-slate-400">${m.date}</td>
+                        <td class="p-3 text-right">
+                            <span class="text-xs text-amber-500 font-mono">${m.eloChange > 0 ? '+' : ''}${m.eloChange} Elo</span>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        window.switchView = function(viewName) {
+            ['account', 'bots', 'online', 'game'].forEach(v => {
+                document.getElementById(`view${v.charAt(0).toUpperCase() + v.slice(1)}`).classList.add('hidden');
+                const nav = document.getElementById(`nav${v.charAt(0).toUpperCase() + v.slice(1)}`);
+                if (nav) nav.classList.remove('bg-slate-800', 'text-amber-400');
+            });
+
+            document.getElementById(`view${viewName.charAt(0).toUpperCase() + viewName.slice(1)}`).classList.remove('hidden');
+            const activeNav = document.getElementById(`nav${viewName.charAt(0).toUpperCase() + viewName.slice(1)}`);
+            if (activeNav) activeNav.classList.add('bg-slate-800', 'text-amber-400');
+
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+            }
+        };
+
+        window.toggleMobileMenu = function() {
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        };
+
+        window.changeBoardTheme = function(themeClass) {
+            const board = document.getElementById('chessboard');
+            board.className = `chessboard-grid ${themeClass} w-full h-full`;
+        };
+
+        window.selectBot = function(elo) {
+            botElo = elo;
+            document.querySelectorAll('.bot-card').forEach(c => {
+                c.classList.remove('border-amber-500', 'shadow-lg', 'shadow-amber-500/10');
+                c.classList.add('border-slate-800');
+            });
+            const selected = document.getElementById(`botCard${elo}`);
+            if (selected) {
+                selected.classList.remove('border-slate-800');
+                selected.classList.add('border-amber-500', 'shadow-lg', 'shadow-amber-500/10');
+            }
+        };
+
+        window.setBotSide = function(side) {
+            botSideConfig = side;
+            ['w', 'random', 'b'].forEach(s => {
+                const btn = document.getElementById(`sideBtn${s.charAt(0).toUpperCase() + s.slice(1)}`);
+                if (s === side) {
+                    btn.className = "py-2.5 px-3 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center space-x-2 border border-amber-500";
+                } else {
+                    btn.className = "py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center space-x-2 border border-slate-700";
+                }
+            });
+        };
+
+        window.setBotTimeControl = function(mins) {
+            botTimeControl = mins;
+            [1, 3, 5, 10, 0].forEach(m => {
+                const btn = document.getElementById(`timeBtn${m}`);
+                if (m === mins) {
+                    btn.className = "py-2 bg-amber-500/20 border border-amber-500 text-amber-400 rounded-lg text-xs font-bold text-center";
+                } else {
+                    btn.className = "py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 text-center";
+                }
+            });
+        };
+
+        function triggerBotMove() {
+            if (game.game_over() || game.turn() === playerColor) return;
+
+            // Artificial delay for realistic bot thinking feel
+            const thinkingTime = Math.random() * 400 + 300;
+            setTimeout(() => {
+                const moves = game.moves({ verbose: true });
+                if (moves.length === 0) return;
+
+                let chosenMove = null;
+
+                if (botElo <= 400) {
+                    // 400 Elo: Random move mostly
+                    chosenMove = moves[Math.floor(Math.random() * moves.length)];
+                } else if (botElo <= 800) {
+                    // 800 Elo: Pick capture if available, else random
+                    const captures = moves.filter(m => m.captured);
+                    chosenMove = captures.length > 0 ? captures[Math.floor(Math.random() * captures.length)] : moves[Math.floor(Math.random() * moves.length)];
+                } else {
+                    // 1200+ Elo: Minimax evaluation
+                    const depth = botElo >= 2000 ? 3 : botElo >= 1600 ? 2 : 1;
+                    chosenMove = minimaxRoot(depth, game.turn() === 'w');
+                }
+
+                if (chosenMove) {
+                    executeMove(chosenMove);
+                }
+            }, thinkingTime);
+        }
+
+        // Piece Values for Heuristic Evaluation
+        const PIECE_VALUES = { p: 10, n: 30, b: 32, r: 50, q: 90, k: 900 };
+
+        function evaluateBoard(board) {
+            let totalVal = 0;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece) {
+                        const val = PIECE_VALUES[piece.type] || 0;
+                        totalVal += piece.color === 'w' ? val : -val;
+                    }
+                }
+            }
+            return totalVal;
+        }
+
+        function minimaxRoot(depth, isMaximizing) {
+            const moves = game.moves({ verbose: true });
+            let bestMove = moves[0];
+            let bestVal = isMaximizing ? -Infinity : Infinity;
+
+            for (let i = 0; i < moves.length; i++) {
+                game.move(moves[i]);
+                const val = minimax(depth - 1, -Infinity, Infinity, !isMaximizing);
+                game.undo();
+
+                if (isMaximizing ? (val > bestVal) : (val < bestVal)) {
+                    bestVal = val;
+                    bestMove = moves[i];
+                }
+            }
+            return bestMove;
+        }
+
+        function minimax(depth, alpha, beta, isMaximizing) {
+            if (depth === 0 || game.game_over()) {
+                return evaluateBoard(game.board());
+            }
+
+            const moves = game.moves({ verbose: true });
+            if (isMaximizing) {
+                let maxVal = -Infinity;
+                for (let i = 0; i < moves.length; i++) {
+                    game.move(moves[i]);
+                    maxVal = Math.max(maxVal, minimax(depth - 1, alpha, beta, false));
+                    game.undo();
+                    alpha = Math.max(alpha, maxVal);
+                    if (beta <= alpha) break;
+                }
+                return maxVal;
+            } else {
+                let minVal = Infinity;
+                for (let i = 0; i < moves.length; i++) {
+                    game.move(moves[i]);
+                    minVal = Math.min(minVal, minimax(depth - 1, alpha, beta, true));
+                    game.undo();
+                    beta = Math.min(beta, minVal);
+                    if (beta <= alpha) break;
+                }
+                return minVal;
+            }
+        }
+
+        window.startBotGame = function() {
+            gameMode = 'bot';
+            game.reset();
+            selectedSquare = null;
+            lastMove = null;
+
+            playerColor = botSideConfig === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : botSideConfig;
+            boardFlipped = playerColor === 'b';
+
+            // Setup Timers
+            whiteTime = botTimeControl * 60;
+            blackTime = botTimeControl * 60;
+
+            // Player Names
+            const topName = playerColor === 'w' ? `Bot (${botElo} Elo)` : userProfile.displayName;
+            const bottomName = playerColor === 'w' ? userProfile.displayName : `Bot (${botElo} Elo)`;
+
+            document.getElementById('topPlayerName').innerText = topName;
+            document.getElementById('bottomPlayerName').innerText = bottomName;
+            document.getElementById('topPlayerAvatar').innerText = topName.charAt(0);
+            document.getElementById('bottomPlayerAvatar').innerText = bottomName.charAt(0);
+
+            document.getElementById('navGame').classList.remove('hidden');
+            switchView('game');
+            renderBoard();
+            startClocks();
+
+            if (playerColor === 'b') {
+                triggerBotMove();
+            }
+        };
+
+        window.setOnlineSide = function(side) {
+            onlineSideConfig = side;
+            ['w', 'random', 'b'].forEach(s => {
+                const btn = document.getElementById(`onSide${s.charAt(0).toUpperCase() + s.slice(1)}`);
+                btn.className = s === side ? "py-2 px-2 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs border border-amber-500 text-center" : "py-2 px-2 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs border border-slate-700 text-center";
+            });
+        };
+
+        window.setOnlineTime = function(mins) {
+            onlineTimeControl = mins;
+            [1, 3, 5, 10, 0].forEach(m => {
+                const btn = document.getElementById(`onTime${m}`);
+                btn.className = m === mins ? "py-1.5 bg-amber-500/20 border border-amber-500 text-amber-400 rounded text-xs font-bold" : "py-1.5 bg-slate-800 border border-slate-700 rounded text-xs font-bold text-slate-300";
+            });
+        };
+
+        window.createOnlineRoom = async function() {
+            if (!currentUser) return showToast("Please sign in first!", "error");
+
+            const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const hostSide = onlineSideConfig === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : onlineSideConfig;
+            
+            activeRoomCode = roomCode;
+            isHost = true;
+            playerColor = hostSide;
+
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'chess_rooms', roomCode);
+            const roomData = {
+                code: roomCode,
+                hostUid: currentUser.uid,
+                hostName: userProfile.displayName,
+                hostSide: hostSide,
+                timeControl: onlineTimeControl,
+                whiteUid: hostSide === 'w' ? currentUser.uid : null,
+                blackUid: hostSide === 'b' ? currentUser.uid : null,
+                whiteName: hostSide === 'w' ? userProfile.displayName : 'Waiting...',
+                blackName: hostSide === 'b' ? userProfile.displayName : 'Waiting...',
+                fen: (new Chess()).fen(),
+                currentTurn: 'w',
+                status: 'waiting',
+                moveHistory: [],
+                lastMoveTime: Date.now()
+            };
+
+            try {
+                await setDoc(roomRef, roomData);
+                document.getElementById('modalRoomCode').innerText = roomCode;
+                document.getElementById('roomModal').classList.remove('hidden');
+                listenToRoom(roomCode);
+            } catch(e) {
+                showToast("Failed to create room: " + e.message, "error");
+            }
+        };
+
+        window.joinOnlineRoom = async function() {
+            if (!currentUser) return showToast("Please sign in first!", "error");
+            const codeInput = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+            if (codeInput.length !== 6) return showToast("Enter a valid 6-character code!", "error");
+
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'chess_rooms', codeInput);
+            try {
+                const snap = await getDoc(roomRef);
+                if (!snap.exists()) return showToast("Room code not found!", "error");
+
+                const room = snap.data();
+                if (room.status !== 'waiting' && room.whiteUid !== currentUser.uid && room.blackUid !== currentUser.uid) {
+                    return showToast("Game already in progress!", "error");
+                }
+
+                activeRoomCode = codeInput;
+                isHost = false;
+
+                // Determine guest side
+                if (!room.whiteUid) {
+                    playerColor = 'w';
+                    await updateDoc(roomRef, { whiteUid: currentUser.uid, whiteName: userProfile.displayName, status: 'playing' });
+                } else if (!room.blackUid) {
+                    playerColor = 'b';
+                    await updateDoc(roomRef, { blackUid: currentUser.uid, blackName: userProfile.displayName, status: 'playing' });
+                } else {
+                    playerColor = room.whiteUid === currentUser.uid ? 'w' : 'b';
+                }
+
+                listenToRoom(codeInput);
+            } catch(e) {
+                showToast("Failed to join room: " + e.message, "error");
+            }
+        };
+
+        function listenToRoom(code) {
+            if (roomUnsubscribe) roomUnsubscribe();
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'chess_rooms', code);
+
+            roomUnsubscribe = onSnapshot(roomRef, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const room = docSnap.data();
+
+                if (room.status === 'playing') {
+                    document.getElementById('roomModal').classList.add('hidden');
+                    gameMode = 'online';
+                    boardFlipped = playerColor === 'b';
+
+                    // Sync state
+                    if (game.fen() !== room.fen) {
+                        game.load(room.fen);
+                        sound.move();
+                    }
+
+                    // Setup players
+                    const topName = playerColor === 'w' ? room.blackName : room.whiteName;
+                    const bottomName = playerColor === 'w' ? room.whiteName : room.blackName;
+
+                    document.getElementById('topPlayerName').innerText = topName;
+                    document.getElementById('bottomPlayerName').innerText = bottomName;
+                    document.getElementById('topPlayerAvatar').innerText = topName.charAt(0);
+                    document.getElementById('bottomPlayerAvatar').innerText = bottomName.charAt(0);
+
+                    document.getElementById('gameRoomBadge').innerText = `Room: ${code}`;
+                    document.getElementById('gameRoomBadge').classList.remove('hidden');
+
+                    document.getElementById('navGame').classList.remove('hidden');
+                    switchView('game');
+                    renderBoard();
+
+                    if (game.game_over()) {
+                        handleGameOver();
+                    }
+                }
+            }, (error) => console.error("Room sync error:", error));
+        }
+
+        window.copyRoomCode = function() {
+            if (!activeRoomCode) return;
+            const temp = document.createElement('textarea');
+            temp.value = activeRoomCode;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast("Room code copied to clipboard!");
+        };
+
+        window.cancelRoomWaiting = function() {
+            if (roomUnsubscribe) roomUnsubscribe();
+            document.getElementById('roomModal').classList.add('hidden');
+        };
+
+        function renderBoard() {
+            const boardEl = document.getElementById('chessboard');
+            boardEl.innerHTML = '';
+
+            const position = game.board();
+            const turn = game.turn();
+            const inCheck = game.in_check();
+
+            // Status Banner
+            const statusText = game.in_checkmate() ? 'Checkmate!' : game.in_draw() ? 'Draw!' : inCheck ? 'Check!' : `${turn === 'w' ? 'White' : 'Black'}'s Turn`;
+            document.getElementById('gameStatusText').innerText = statusText;
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const row = boardFlipped ? 7 - r : r;
+                    const col = boardFlipped ? 7 - c : c;
+                    const squareSquare = String.fromCharCode(97 + col) + (8 - row);
+                    const piece = position[row][col];
+                    const isDark = (row + col) % 2 === 1;
+
+                    const sqDiv = document.createElement('div');
+                    sqDiv.className = `square ${isDark ? 'sq-dark' : 'sq-light'}`;
+                    sqDiv.dataset.square = squareSquare;
+
+                    // Selection highlight
+                    if (selectedSquare === squareSquare) {
+                        sqDiv.classList.add('selected');
+                    }
+
+                    // Last move highlight
+                    if (lastMove && (lastMove.from === squareSquare || lastMove.to === squareSquare)) {
+                        sqDiv.classList.add('last-move');
+                    }
+
+                    // King in check highlight
+                    if (inCheck && piece && piece.type === 'k' && piece.color === turn) {
+                        sqDiv.classList.add('check-warning');
+                    }
+
+                    // Move dots & capture rings
+                    const isMoveTarget = legalMoves.find(m => m.to === squareSquare);
+                    if (isMoveTarget) {
+                        if (piece) {
+                            const ring = document.createElement('div');
+                            ring.className = 'capture-ring';
+                            sqDiv.appendChild(ring);
+                        } else {
+                            const dot = document.createElement('div');
+                            dot.className = 'move-dot';
+                            sqDiv.appendChild(dot);
+                        }
+                    }
+
+                    // Render Piece SVG
+                    if (piece) {
+                        const pieceCode = piece.color + piece.type.toUpperCase();
+                        const pDiv = document.createElement('div');
+                        pDiv.className = 'piece';
+                        pDiv.innerHTML = PIECE_SVGS[pieceCode] || '';
+                        sqDiv.appendChild(pDiv);
+                    }
+
+                    sqDiv.addEventListener('click', () => handleSquareClick(squareSquare));
+                    boardEl.appendChild(sqDiv);
+                }
+            }
+
+            updateMoveLog();
+            updateCapturedPieces();
+        }
+
+        function handleSquareClick(sq) {
+            if (game.game_over()) return;
+            if (gameMode === 'bot' && game.turn() !== playerColor) return;
+            if (gameMode === 'online' && game.turn() !== playerColor) return;
+
+            const piece = game.get(sq);
+
+            if (selectedSquare) {
+                // Try making move
+                const moveObj = legalMoves.find(m => m.to === sq);
+                if (moveObj) {
+                    // Check promotion
+                    if (moveObj.flags.includes('p')) {
+                        showPromotionModal(moveObj);
+                        return;
+                    }
+                    executeMove(moveObj);
+                    return;
+                }
+            }
+
+            // Select piece if matching turn
+            if (piece && piece.color === game.turn()) {
+                selectedSquare = sq;
+                legalMoves = game.moves({ square: sq, verbose: true });
+                sound.init();
+            } else {
+                selectedSquare = null;
+                legalMoves = [];
+            }
+            renderBoard();
+        }
+
+        async function executeMove(moveObj) {
+            const result = game.move(moveObj);
+            if (!result) return;
+
+            lastMove = result;
+            selectedSquare = null;
+            legalMoves = [];
+
+            if (result.captured) sound.capture();
+            else sound.move();
+
+            if (game.in_check()) sound.check();
+
+            renderBoard();
+
+            // Online sync
+            if (gameMode === 'online' && activeRoomCode) {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'chess_rooms', activeRoomCode);
+                await updateDoc(roomRef, {
+                    fen: game.fen(),
+                    currentTurn: game.turn(),
+                    lastMoveTime: Date.now()
+                });
+            }
+
+            if (game.game_over()) {
+                handleGameOver();
+            } else if (gameMode === 'bot' && game.turn() !== playerColor) {
+                triggerBotMove();
+            }
+        }
+
+        function showPromotionModal(moveObj) {
+            pendingPromotionMove = moveObj;
+            const choicesEl = document.getElementById('promotionChoices');
+            choicesEl.innerHTML = '';
+
+            const pieces = ['q', 'r', 'b', 'n'];
+            pieces.forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = "w-12 h-12 bg-slate-800 hover:bg-amber-500/20 border border-slate-700 rounded-xl flex items-center justify-center p-1 transition-all";
+                btn.innerHTML = PIECE_SVGS[playerColor + p.toUpperCase()];
+                btn.onclick = () => {
+                    document.getElementById('promotionModal').classList.add('hidden');
+                    pendingPromotionMove.promotion = p;
+                    executeMove(pendingPromotionMove);
+                };
+                choicesEl.appendChild(btn);
+            });
+
+            document.getElementById('promotionModal').classList.remove('hidden');
+        }
+
+        function updateMoveLog() {
+            const logEl = document.getElementById('moveLog');
+            const history = game.history({ verbose: true });
+            if (history.length === 0) {
+                logEl.innerHTML = `<div class="col-span-2 text-slate-500 italic text-center py-4">No moves played yet</div>`;
+                return;
+            }
+
+            let html = '';
+            for (let i = 0; i < history.length; i += 2) {
+                const moveNum = Math.floor(i / 2) + 1;
+                const whiteMove = history[i].san;
+                const blackMove = history[i + 1] ? history[i + 1].san : '';
+                html += `
+                    <div class="text-slate-500 font-semibold">${moveNum}. ${whiteMove}</div>
+                    <div class="text-slate-300">${blackMove}</div>
+                `;
+            }
+            logEl.innerHTML = html;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function updateCapturedPieces() {
+            // Calculated from board material
+            const board = game.board();
+            const counts = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
+            const whiteRemaining = { ...counts };
+            const blackRemaining = { ...counts };
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const p = board[r][c];
+                    if (p) {
+                        if (p.color === 'w') whiteRemaining[p.type]--;
+                        else blackRemaining[p.type]--;
+                    }
+                }
+            }
+
+            // Render top & bottom captured lists
+            let topCaptured = [];
+            let bottomCaptured = [];
+
+            const renderSVGS = (color, type, count) => {
+                let s = '';
+                for (let i = 0; i < count; i++) {
+                    s += `<span class="w-3.5 h-3.5 inline-block">${PIECE_SVGS[color + type.toUpperCase()]}</span>`;
+                }
+                return s;
+            };
+
+            ['q', 'r', 'b', 'n', 'p'].forEach(type => {
+                if (playerColor === 'w') {
+                    if (whiteRemaining[type] > 0) topCaptured.push(renderSVGS('w', type, whiteRemaining[type]));
+                    if (blackRemaining[type] > 0) bottomCaptured.push(renderSVGS('b', type, blackRemaining[type]));
+                } else {
+                    if (blackRemaining[type] > 0) topCaptured.push(renderSVGS('b', type, blackRemaining[type]));
+                    if (whiteRemaining[type] > 0) bottomCaptured.push(renderSVGS('w', type, whiteRemaining[type]));
+                }
+            });
+
+            document.getElementById('topCapturedPieces').innerHTML = topCaptured.join('');
+            document.getElementById('bottomCapturedPieces').innerHTML = bottomCaptured.join('');
+        }
+
+        function startClocks() {
+            if (clockInterval) clearInterval(clockInterval);
+            clockInterval = setInterval(() => {
+                if (game.game_over() || botTimeControl === 0) return;
+
+                if (game.turn() === 'w') {
+                    whiteTime--;
+                    if (whiteTime <= 0) handleTimeout('w');
+                } else {
+                    blackTime--;
+                    if (blackTime <= 0) handleTimeout('b');
+                }
+                updateClockDisplay();
+            }, 1000);
+            updateClockDisplay();
+        }
+
+        function updateClockDisplay() {
+            const fmt = (sec) => {
+                const m = Math.floor(sec / 60);
+                const s = sec % 60;
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            };
+
+            const whiteFormatted = fmt(Math.max(0, whiteTime));
+            const blackFormatted = fmt(Math.max(0, blackTime));
+
+            if (playerColor === 'w') {
+                document.getElementById('bottomClock').innerText = whiteFormatted;
+                document.getElementById('topClock').innerText = blackFormatted;
+            } else {
+                document.getElementById('bottomClock').innerText = blackFormatted;
+                document.getElementById('topClock').innerText = whiteFormatted;
+            }
+        }
+
+        function handleTimeout(colorLost) {
+            clearInterval(clockInterval);
+            const winner = colorLost === 'w' ? 'Black' : 'White';
+            showGameOverModal(winner, "Time expired");
+        }
+
+        async function handleGameOver() {
+            clearInterval(clockInterval);
+            let title = "Game Over";
+            let subtext = "";
+
+            if (game.in_checkmate()) {
+                const winner = game.turn() === 'w' ? 'Black' : 'White';
+                title = `${winner} Wins!`;
+                subtext = "Victory by checkmate.";
+                if ((winner === 'White' && playerColor === 'w') || (winner === 'Black' && playerColor === 'b')) sound.victory();
+                else sound.defeat();
+            } else if (game.in_draw()) {
+                title = "Draw!";
+                subtext = game.in_stalemate() ? "Stalemate" : "Insufficient material / repetition";
+            }
+
+            showGameOverModal(title, subtext);
+        }
+
+        async function showGameOverModal(title, subtext) {
+            document.getElementById('gameOverTitle').innerText = title;
+            document.getElementById('gameOverSubtext').innerText = subtext;
+            document.getElementById('gameOverMoveCount').innerText = game.history().length;
+
+            const isWin = title.includes(playerColor === 'w' ? 'White' : 'Black');
+            const isDraw = title.includes('Draw');
+            const eloDiff = isWin ? 15 : isDraw ? 0 : -12;
+
+            document.getElementById('gameOverEloDiff').innerText = `${eloDiff >= 0 ? '+' : ''}${eloDiff} Elo`;
+            document.getElementById('gameOverEloDiff').className = `text-lg font-black ${eloDiff > 0 ? 'text-emerald-400' : eloDiff < 0 ? 'text-red-400' : 'text-amber-400'} mt-0.5`;
+
+            // Update local user stats
+            userProfile.gamesPlayed++;
+            if (isWin) userProfile.wins++;
+            else if (isDraw) userProfile.draws++;
+            else userProfile.losses++;
+
+            if (gameMode === 'bot') userProfile.botElo = Math.max(400, userProfile.botElo + eloDiff);
+            else userProfile.onlineElo = Math.max(400, userProfile.onlineElo + eloDiff);
+
+            userProfile.history.unshift({
+                res: isWin ? 'Victory' : isDraw ? 'Draw' : 'Defeat',
+                opponent: gameMode === 'bot' ? `Bot ${botElo}` : 'Online Opponent',
+                type: gameMode === 'bot' ? 'vs AI' : 'Online',
+                date: new Date().toLocaleDateString(),
+                eloChange: eloDiff
+            });
+
+            await saveUserProfile();
+            document.getElementById('gameOverModal').classList.remove('hidden');
+        }
+
+        window.closeGameOverModal = function() {
+            document.getElementById('gameOverModal').classList.add('hidden');
+        };
+
+        window.offerResign = function() {
+            if (game.game_over()) return;
+            handleGameOver();
+        };
+
+        window.flipBoardView = function() {
+            boardFlipped = !boardFlipped;
+            renderBoard();
+        };
+
+        window.exitGameArena = function() {
+            if (clockInterval) clearInterval(clockInterval);
+            switchView('account');
+        };
+
+        function showToast(msg, type = "info") {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto flex items-center space-x-2 px-4 py-3 rounded-xl shadow-xl text-xs font-bold text-slate-100 border transition-all transform translate-y-2 opacity-0 ${type === 'error' ? 'bg-red-900/90 border-red-700' : 'bg-slate-900/90 border-amber-500/50'}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-triangle-exclamation text-red-400' : 'fa-circle-check text-amber-400'}"></i><span>${msg}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        window.onload = function() {
+            switchView('account');
+            selectBot(1200);
+        };
+    </script>
+</body>
+</html>
