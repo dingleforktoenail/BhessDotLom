@@ -1,0 +1,43 @@
+body {
+  font-family: 'Outfit', sans-serif;
+}
+
+.square-light {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+
+.square-dark {
+  background-color: #334155;
+  color: #f8fafc;
+}
+
+.square-selected {
+  background-color: #f59e0b !important;
+}
+
+.square-check {
+  background-color: #ef4444 !important;
+}
+
+.legal-hint {
+  width: 26%;
+  height: 26%;
+  background-color: rgba(16, 185, 129, 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.board-square {
+  width: 100%;
+  padding-bottom: 100%;
+  position: relative;
+}
+
+.board-square > * {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
